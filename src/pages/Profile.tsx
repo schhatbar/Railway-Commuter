@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { removeFrequentRoute } from '../firebase/services';
+import { FrequentRoute } from '../types';
 
 const Profile: React.FC = () => {
   const { currentUser, updateUserProfile } = useAuth();
@@ -153,21 +155,43 @@ const Profile: React.FC = () => {
 
         {/* Frequent Routes Section */}
         <div className="card">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Frequent Routes</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-gray-900">Frequent Routes</h2>
+          </div>
           {currentUser?.frequentRoutes && currentUser.frequentRoutes.length > 0 ? (
             <div className="space-y-3">
               {currentUser.frequentRoutes.map((route, index) => (
-                <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                   <div>
                     <h3 className="font-semibold text-gray-900">{route.trainName}</h3>
                     <p className="text-sm text-gray-600">{route.route}</p>
                   </div>
-                  <span className="text-primary-600 font-medium">{route.trainNumber}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-primary-600 font-medium">{route.trainNumber}</span>
+                    <button
+                      onClick={async () => {
+                        if (currentUser && window.confirm('Remove this route from favorites?')) {
+                          try {
+                            await removeFrequentRoute(currentUser.userId, route.trainNumber);
+                            await updateUserProfile({});
+                          } catch (error) {
+                            console.error('Error removing route:', error);
+                          }
+                        }
+                      }}
+                      className="text-red-600 hover:text-red-700 p-1"
+                      title="Remove route"
+                    >
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-gray-600">No frequent routes saved yet</p>
+            <p className="text-gray-600">No frequent routes saved yet. Save routes from the dashboard to see them here.</p>
           )}
         </div>
       </div>

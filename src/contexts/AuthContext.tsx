@@ -12,6 +12,7 @@ import {
 import { auth } from '../firebase/config';
 import { createUserProfile, getUserProfile, updateUserProfile as updateProfile } from '../firebase/services';
 import { User, AuthContextType } from '../types';
+import { Timestamp } from 'firebase/firestore';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -62,9 +63,51 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
-        // Fetch user profile from Firestore
-        const userProfile = await getUserProfile(firebaseUser.uid);
-        setCurrentUser(userProfile);
+        try {
+          // Fetch user profile from Firestore
+          const userProfile = await getUserProfile(firebaseUser.uid);
+          if (userProfile) {
+            setCurrentUser(userProfile);
+          } else {
+            // If profile doesn't exist, create it from Firebase auth data
+            try {
+              await createUserProfile(firebaseUser.uid, {
+                email: firebaseUser.email || '',
+                displayName: firebaseUser.displayName || 'User',
+                phoneNumber: firebaseUser.phoneNumber || '',
+                frequentRoutes: []
+              });
+              const newProfile = await getUserProfile(firebaseUser.uid);
+              setCurrentUser(newProfile);
+            } catch (profileError: any) {
+              console.error('Error creating user profile:', profileError);
+              // Don't sign out user if profile creation fails, keep auth state
+              // Create a minimal user object from Firebase auth
+              setCurrentUser({
+                userId: firebaseUser.uid,
+                email: firebaseUser.email || '',
+                displayName: firebaseUser.displayName || 'User',
+                phoneNumber: firebaseUser.phoneNumber || '',
+                frequentRoutes: [],
+                createdAt: Timestamp.now()
+              });
+            }
+          }
+        } catch (error: any) {
+          console.error('Error fetching user profile:', error);
+          // Don't sign out user on Firestore errors, keep auth state
+          // Create a minimal user object from Firebase auth
+          if (firebaseUser) {
+            setCurrentUser({
+              userId: firebaseUser.uid,
+              email: firebaseUser.email || '',
+              displayName: firebaseUser.displayName || 'User',
+              phoneNumber: firebaseUser.phoneNumber || '',
+              frequentRoutes: [],
+              createdAt: Timestamp.now()
+            });
+          }
+        }
       } else {
         setCurrentUser(null);
       }
@@ -75,24 +118,69 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const signUp = async (email: string, password: string, displayName: string) => {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
 
-    // Create user profile in Firestore
-    await createUserProfile(user.uid, {
-      email: user.email || email,
-      displayName,
-      phoneNumber: '',
-      frequentRoutes: []
-    });
+      // Wait a moment to ensure auth state is propagated
+      await new Promise(resolve => setTimeout(resolve, 100));
 
-    // Fetch and set the new user profile
-    const userProfile = await getUserProfile(user.uid);
-    setCurrentUser(userProfile);
+      // Create user profile in Firestore
+      try {
+        await createUserProfile(user.uid, {
+          email: user.email || email,
+          displayName,
+          phoneNumber: '',
+          frequentRoutes: []
+        });
+
+        // Fetch and set the new user profile
+        const userProfile = await getUserProfile(user.uid);
+        setCurrentUser(userProfile);
+      } catch (firestoreError: any) {
+        // Handle Firestore permission errors
+        if (firestoreError.code === 'permission-denied' || firestoreError.code === 'permissions-denied') {
+          throw new Error('Firestore permissions error. Please ensure security rules are deployed. See README for instructions.');
+        }
+        throw firestoreError;
+      }
+    } catch (error: any) {
+      // Provide user-friendly error messages
+      if (error.code === 'auth/operation-not-allowed') {
+        throw new Error('Email/Password authentication is not enabled. Please contact support or enable it in Firebase Console.');
+      } else if (error.code === 'auth/email-already-in-use') {
+        throw new Error('This email is already registered. Please sign in instead.');
+      } else if (error.code === 'auth/invalid-email') {
+        throw new Error('Invalid email address. Please check your email and try again.');
+      } else if (error.code === 'auth/weak-password') {
+        throw new Error('Password is too weak. Please use a stronger password.');
+      } else if (error.message && error.message.includes('Firestore permissions')) {
+        throw error;
+      }
+      // Re-throw the error with original message if it's not a known error
+      throw error;
+    }
   };
 
   const signIn = async (email: string, password: string) => {
-    await signInWithEmailAndPassword(auth, email, password);
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch (error: any) {
+      // Provide user-friendly error messages
+      if (error.code === 'auth/operation-not-allowed') {
+        throw new Error('Email/Password authentication is not enabled. Please contact support or enable it in Firebase Console.');
+      } else if (error.code === 'auth/user-not-found') {
+        throw new Error('No account found with this email. Please sign up first.');
+      } else if (error.code === 'auth/wrong-password') {
+        throw new Error('Incorrect password. Please try again.');
+      } else if (error.code === 'auth/invalid-email') {
+        throw new Error('Invalid email address. Please check your email and try again.');
+      } else if (error.code === 'auth/invalid-credential') {
+        throw new Error('Invalid email or password. Please check your credentials and try again.');
+      }
+      // Re-throw the error with original message if it's not a known error
+      throw error;
+    }
   };
 
   const signInWithGoogle = async () => {

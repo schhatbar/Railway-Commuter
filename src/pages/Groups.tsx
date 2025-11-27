@@ -44,7 +44,7 @@ const Groups: React.FC = () => {
             <Link to="/groups/join" className="btn-secondary">
               Join Group
             </Link>
-            <Link to="/" className="btn-primary">
+            <Link to="/groups/create" className="btn-primary">
               Create Group
             </Link>
           </div>
@@ -73,7 +73,7 @@ const Groups: React.FC = () => {
               <Link to="/groups/join" className="btn-secondary">
                 Join Group
               </Link>
-              <Link to="/" className="btn-primary">
+              <Link to="/groups/create" className="btn-primary">
                 Create Group
               </Link>
             </div>

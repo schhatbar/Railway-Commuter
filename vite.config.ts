@@ -38,12 +38,37 @@ export default defineConfig({
             options: {
               cacheName: 'firebase-cache',
               expiration: {
-                maxEntries: 10,
-                maxAgeSeconds: 300
+                maxEntries: 50,
+                maxAgeSeconds: 3600 // 1 hour
+              },
+              networkTimeoutSeconds: 10
+            }
+          },
+          {
+            urlPattern: /^https:\/\/.*\.googleapis\.com\/.*/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'google-apis-cache',
+              expiration: {
+                maxEntries: 30,
+                maxAgeSeconds: 1800 // 30 minutes
+              }
+            }
+          },
+          {
+            urlPattern: /^https:\/\/.*\.firebaseio\.com\/.*/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'firebase-realtime-cache',
+              expiration: {
+                maxEntries: 20,
+                maxAgeSeconds: 600 // 10 minutes
               }
             }
           }
-        ]
+        ],
+        skipWaiting: true,
+        clientsClaim: true
       }
     })
   ],

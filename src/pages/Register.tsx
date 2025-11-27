@@ -48,7 +48,18 @@ const Register: React.FC = () => {
       await signUp(formData.email, formData.password, formData.displayName);
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err.message || 'Failed to create account');
+      // Provide user-friendly error messages
+      if (err.code === 'auth/operation-not-allowed') {
+        setError('Email/Password authentication is not enabled. Please contact support or enable it in Firebase Console.');
+      } else if (err.code === 'auth/email-already-in-use') {
+        setError('This email is already registered. Please sign in instead.');
+      } else if (err.code === 'auth/invalid-email') {
+        setError('Invalid email address. Please check your email and try again.');
+      } else if (err.code === 'auth/weak-password') {
+        setError('Password is too weak. Please use a stronger password.');
+      } else {
+        setError(err.message || 'Failed to create account. Please try again.');
+      }
     } finally {
       setLoading(false);
     }

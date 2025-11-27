@@ -12,6 +12,7 @@ import CreateGroup from './pages/CreateGroup';
 import JoinGroup from './pages/JoinGroup';
 import GroupDetail from './pages/GroupDetail';
 import Profile from './pages/Profile';
+import Reminders from './pages/Reminders';
 
 const App: React.FC = () => {
   return (
@@ -76,6 +77,15 @@ const App: React.FC = () => {
                 <ProtectedRoute>
                   <Navbar />
                   <Profile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/reminders"
+              element={
+                <ProtectedRoute>
+                  <Navbar />
+                  <Reminders />
                 </ProtectedRoute>
               }
             />

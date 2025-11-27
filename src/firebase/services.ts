@@ -14,7 +14,7 @@ import {
   Timestamp
 } from 'firebase/firestore';
 import { db } from './config';
-import { User, Group, Train, ChatMessage, GroupMember } from '../types';
+import { User, Group, Train, ChatMessage, GroupMember, FrequentRoute, JourneyReminder } from '../types';
 
 // User Services
 export const createUserProfile = async (userId: string, userData: Omit<User, 'userId' | 'createdAt'>) => {
@@ -51,6 +51,39 @@ export const getUserProfile = async (userId: string): Promise<User | null> => {
 export const updateUserProfile = async (userId: string, updates: Partial<User>) => {
   const userRef = doc(db, 'users', userId);
   await updateDoc(userRef, updates);
+};
+
+export const addFrequentRoute = async (userId: string, route: FrequentRoute) => {
+  const userRef = doc(db, 'users', userId);
+  const userSnap = await getDoc(userRef);
+  
+  if (userSnap.exists()) {
+    const user = userSnap.data() as User;
+    const existingRoutes = user.frequentRoutes || [];
+    
+    // Check if route already exists
+    const routeExists = existingRoutes.some(
+      r => r.trainNumber === route.trainNumber
+    );
+    
+    if (!routeExists) {
+      const updatedRoutes = [...existingRoutes, route];
+      await updateDoc(userRef, { frequentRoutes: updatedRoutes });
+    }
+  }
+};
+
+export const removeFrequentRoute = async (userId: string, trainNumber: string) => {
+  const userRef = doc(db, 'users', userId);
+  const userSnap = await getDoc(userRef);
+  
+  if (userSnap.exists()) {
+    const user = userSnap.data() as User;
+    const updatedRoutes = (user.frequentRoutes || []).filter(
+      r => r.trainNumber !== trainNumber
+    );
+    await updateDoc(userRef, { frequentRoutes: updatedRoutes });
+  }
 };
 
 // Train Services
@@ -112,7 +145,7 @@ export const joinGroup = async (groupCode: string, member: GroupMember): Promise
   }
 
   const groupDoc = querySnapshot.docs[0];
-  const group = groupDoc.data() as Group;
+  const group = { groupId: groupDoc.id, ...groupDoc.data() } as Group;
 
   // Check if user is already a member
   if (group.members.some(m => m.userId === member.userId)) {
@@ -158,7 +191,8 @@ export const getGroupByCode = async (groupCode: string): Promise<Group | null> =
     return null;
   }
 
-  return querySnapshot.docs[0].data() as Group;
+  const doc = querySnapshot.docs[0];
+  return { groupId: doc.id, ...doc.data() } as Group;
 };
 
 export const getUserGroups = async (userId: string): Promise<Group[]> => {
@@ -197,21 +231,66 @@ export const sendMessage = async (groupId: string, userId: string, userName: str
   });
 };
 
-export const subscribeToMessages = (groupId: string, callback: (messages: ChatMessage[]) => void) => {
+export const subscribeToMessages = (
+  groupId: string, 
+  callback: (messages: ChatMessage[]) => void,
+  onError?: (error: any) => void
+) => {
   const messagesRef = collection(db, 'messages');
+  
+  // Try with orderBy first (requires index)
   const q = query(
     messagesRef,
     where('groupId', '==', groupId),
     orderBy('timestamp', 'asc')
   );
 
-  return onSnapshot(q, (snapshot) => {
-    const messages: ChatMessage[] = [];
-    snapshot.forEach((doc) => {
-      messages.push({ messageId: doc.id, ...doc.data() } as ChatMessage);
-    });
-    callback(messages);
-  });
+  return onSnapshot(
+    q, 
+    (snapshot) => {
+      const messages: ChatMessage[] = [];
+      snapshot.forEach((doc) => {
+        messages.push({ messageId: doc.id, ...doc.data() } as ChatMessage);
+      });
+      callback(messages);
+    },
+    (error) => {
+      console.error('Error in message subscription:', error);
+      
+      // If index doesn't exist, try without orderBy as fallback
+      if (error.code === 'failed-precondition' || error.code === 9) {
+        console.warn('Firestore index missing. Using fallback query without orderBy.');
+        const fallbackQuery = query(
+          messagesRef,
+          where('groupId', '==', groupId)
+        );
+        
+        // Return the fallback subscription
+        return onSnapshot(fallbackQuery, (snapshot) => {
+          const messages: ChatMessage[] = [];
+          snapshot.forEach((doc) => {
+            messages.push({ messageId: doc.id, ...doc.data() } as ChatMessage);
+          });
+          // Sort manually by timestamp
+          messages.sort((a, b) => {
+            try {
+              const aTime = a.timestamp?.toDate?.()?.getTime() || 0;
+              const bTime = b.timestamp?.toDate?.()?.getTime() || 0;
+              return aTime - bTime;
+            } catch {
+              return 0;
+            }
+          });
+          callback(messages);
+        });
+      } else {
+        // For other errors, call onError if provided
+        if (onError) {
+          onError(error);
+        }
+      }
+    }
+  );
 };
 
 // Update member location/seat in group
@@ -222,8 +301,45 @@ export const updateMemberSeat = async (groupId: string, userId: string, cabinNum
   if (groupSnap.exists()) {
     const group = groupSnap.data() as Group;
     const updatedMembers = group.members.map(m =>
-      m.userId === userId ? { ...m, cabinNumber, seatNumber } : m
+      m.userId === userId ? { ...m, cabinNumber, seatNumber, joiningFromNextStation: false } : m
     );
     await updateDoc(groupRef, { members: updatedMembers });
   }
+};
+
+// Journey Reminder Services
+export const createJourneyReminder = async (userId: string, reminder: Omit<JourneyReminder, 'reminderId' | 'createdAt'>) => {
+  const reminderRef = await addDoc(collection(db, 'reminders'), {
+    ...reminder,
+    userId,
+    createdAt: Timestamp.now()
+  });
+  return reminderRef.id;
+};
+
+export const getUserReminders = async (userId: string): Promise<JourneyReminder[]> => {
+  const remindersRef = collection(db, 'reminders');
+  const q = query(
+    remindersRef,
+    where('userId', '==', userId),
+    where('isActive', '==', true),
+    orderBy('journeyDate', 'asc')
+  );
+  const querySnapshot = await getDocs(q);
+
+  const reminders: JourneyReminder[] = [];
+  querySnapshot.forEach((doc) => {
+    reminders.push({ reminderId: doc.id, ...doc.data() } as JourneyReminder);
+  });
+
+  return reminders;
+};
+
+export const deleteReminder = async (reminderId: string) => {
+  await deleteDoc(doc(db, 'reminders', reminderId));
+};
+
+export const updateReminder = async (reminderId: string, updates: Partial<JourneyReminder>) => {
+  const reminderRef = doc(db, 'reminders', reminderId);
+  await updateDoc(reminderRef, updates);
 };

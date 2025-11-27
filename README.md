@@ -82,8 +82,10 @@ npm install
 #### b. Enable Authentication
 
 1. In Firebase Console, go to **Authentication** > **Sign-in method**
-2. Enable **Email/Password**
-3. Enable **Google** sign-in provider
+2. **IMPORTANT**: Click on **Email/Password** and toggle it to **Enabled**
+   - Make sure "Email/Password" (not "Email link") is enabled
+   - Click "Save"
+3. Enable **Google** sign-in provider (optional)
 4. Add your domain to authorized domains
 
 #### c. Create Firestore Database
@@ -380,6 +382,67 @@ The app is configured as a Progressive Web App (PWA):
 - Safari
 - Edge
 - Mobile browsers (iOS Safari, Chrome Mobile)
+
+## Troubleshooting
+
+### Error: "Missing or insufficient permissions" / "Permission denied"
+
+This error occurs when Firestore security rules are not deployed or are incorrectly configured.
+
+**Solution:**
+1. **Deploy Firestore Security Rules** (CRITICAL STEP):
+   ```bash
+   # Install Firebase CLI if not already installed
+   npm install -g firebase-tools
+   
+   # Login to Firebase
+   firebase login
+   
+   # Initialize Firestore (if not done already)
+   firebase init firestore
+   # Select your project
+   # Accept default for firestore.rules file
+   
+   # Deploy the security rules
+   firebase deploy --only firestore:rules
+   ```
+
+2. **Verify Rules are Deployed**:
+   - Go to [Firebase Console](https://console.firebase.google.com/)
+   - Select your project
+   - Navigate to **Firestore Database** > **Rules**
+   - Verify that the rules match the content in `firestore.rules` file
+
+3. **Check Authentication Status**:
+   - Ensure Email/Password authentication is enabled (see below)
+   - Make sure you're signed in before accessing Firestore
+
+4. **Test Again**: Try signing up or accessing the app again
+
+**Important**: The security rules MUST be deployed for the app to work. Without deployed rules, Firestore will deny all requests.
+
+### Error: "auth/operation-not-allowed"
+
+This error occurs when Email/Password authentication is not enabled in Firebase Console.
+
+**Solution:**
+1. Go to [Firebase Console](https://console.firebase.google.com/)
+2. Select your project
+3. Navigate to **Authentication** > **Sign-in method**
+4. Click on **Email/Password**
+5. Toggle the "Email/Password" provider to **Enabled**
+6. Click **Save**
+7. Try signing up again
+
+**Note**: Make sure you enable "Email/Password" (not "Email link (passwordless sign-in)"). Both options may appear in the list.
+
+### Other Common Errors
+
+- **auth/email-already-in-use**: The email is already registered. Try signing in instead.
+- **auth/invalid-email**: Check that the email format is correct.
+- **auth/weak-password**: Use a password with at least 6 characters.
+- **auth/unauthorized-domain**: Add your domain to Firebase Console > Authentication > Settings > Authorized domains.
+- **permission-denied**: Firestore security rules are not deployed. See "Missing or insufficient permissions" above.
 
 ## Known Issues and Limitations
 

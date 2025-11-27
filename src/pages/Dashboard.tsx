@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import TrainSearch from '../components/TrainSearch';
-import { UserSelection } from '../types';
+import { UserSelection, FrequentRoute } from '../types';
+import { addFrequentRoute, getTrainByNumber } from '../firebase/services';
 
 const Dashboard: React.FC = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, updateUserProfile } = useAuth();
   const navigate = useNavigate();
   const [selection, setSelection] = useState<UserSelection | null>(null);
 
@@ -21,6 +22,28 @@ const Dashboard: React.FC = () => {
 
   const handleJoinGroup = () => {
     navigate('/groups/join');
+  };
+
+  const handleSaveRoute = async () => {
+    if (!selection || !currentUser) return;
+
+    try {
+      const train = await getTrainByNumber(selection.trainNumber);
+      if (train) {
+        const route: FrequentRoute = {
+          trainNumber: train.trainNumber,
+          trainName: train.trainName,
+          route: train.route
+        };
+        await addFrequentRoute(currentUser.userId, route);
+        // Refresh user profile to show updated routes
+        await updateUserProfile({});
+        alert('Route saved to favorites!');
+      }
+    } catch (error) {
+      console.error('Error saving route:', error);
+      alert('Failed to save route. Please try again.');
+    }
   };
 
   return (
@@ -72,7 +95,21 @@ const Dashboard: React.FC = () => {
 
         {/* Train Search Section */}
         <div className="card">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Find Your Train</h2>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-gray-900">Find Your Train</h2>
+            {selection && (
+              <button
+                onClick={handleSaveRoute}
+                className="btn-secondary flex items-center gap-2"
+                title="Save this route to favorites"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                </svg>
+                Save Route
+              </button>
+            )}
+          </div>
           <TrainSearch onSelect={handleTrainSelect} />
         </div>
 

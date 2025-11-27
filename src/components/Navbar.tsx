@@ -36,6 +36,9 @@ const Navbar: React.FC = () => {
                 <Link to="/groups" className="text-gray-700 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium">
                   My Groups
                 </Link>
+                <Link to="/reminders" className="text-gray-700 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium">
+                  Reminders
+                </Link>
                 <Link to="/profile" className="text-gray-700 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium">
                   Profile
                 </Link>
@@ -87,6 +90,13 @@ const Navbar: React.FC = () => {
               onClick={() => setMobileMenuOpen(false)}
             >
               My Groups
+            </Link>
+            <Link
+              to="/reminders"
+              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Reminders
             </Link>
             <Link
               to="/profile"
