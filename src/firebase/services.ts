@@ -18,18 +18,34 @@ import { User, Group, Train, ChatMessage, GroupMember } from '../types';
 
 // User Services
 export const createUserProfile = async (userId: string, userData: Omit<User, 'userId' | 'createdAt'>) => {
-  const userRef = doc(db, 'users', userId);
-  await setDoc(userRef, {
-    userId,
-    ...userData,
-    createdAt: Timestamp.now()
-  });
+  try {
+    const userRef = doc(db, 'users', userId);
+    await setDoc(userRef, {
+      userId,
+      ...userData,
+      createdAt: Timestamp.now()
+    });
+  } catch (error: any) {
+    // Provide more context for permission errors
+    if (error.code === 'permission-denied' || error.code === 'permissions-denied') {
+      throw new Error('Permission denied: Firestore security rules may not be deployed. Please deploy firestore.rules to Firebase.');
+    }
+    throw error;
+  }
 };
 
 export const getUserProfile = async (userId: string): Promise<User | null> => {
-  const userRef = doc(db, 'users', userId);
-  const userSnap = await getDoc(userRef);
-  return userSnap.exists() ? userSnap.data() as User : null;
+  try {
+    const userRef = doc(db, 'users', userId);
+    const userSnap = await getDoc(userRef);
+    return userSnap.exists() ? userSnap.data() as User : null;
+  } catch (error: any) {
+    // Provide more context for permission errors
+    if (error.code === 'permission-denied' || error.code === 'permissions-denied') {
+      throw new Error('Permission denied: Firestore security rules may not be deployed. Please deploy firestore.rules to Firebase.');
+    }
+    throw error;
+  }
 };
 
 export const updateUserProfile = async (userId: string, updates: Partial<User>) => {
@@ -66,16 +82,24 @@ export const searchTrains = async (searchTerm: string): Promise<Train[]> => {
 
 // Group Services
 export const createGroup = async (groupData: Omit<Group, 'groupId' | 'createdAt' | 'groupCode'>): Promise<string> => {
-  const groupCode = Math.floor(100000 + Math.random() * 900000).toString();
-  const groupRef = await addDoc(collection(db, 'groups'), {
-    ...groupData,
-    groupCode,
-    createdAt: Timestamp.now(),
-    isActive: true
-  });
+  try {
+    const groupCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const groupRef = await addDoc(collection(db, 'groups'), {
+      ...groupData,
+      groupCode,
+      createdAt: Timestamp.now(),
+      isActive: true
+    });
 
-  await updateDoc(groupRef, { groupId: groupRef.id });
-  return groupCode;
+    await updateDoc(groupRef, { groupId: groupRef.id });
+    return groupCode;
+  } catch (error: any) {
+    // Provide more context for permission errors
+    if (error.code === 'permission-denied' || error.code === 'permissions-denied') {
+      throw new Error('Permission denied: Firestore security rules may not be deployed. Please deploy firestore.rules to Firebase.');
+    }
+    throw error;
+  }
 };
 
 export const joinGroup = async (groupCode: string, member: GroupMember): Promise<Group | null> => {
