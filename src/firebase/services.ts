@@ -258,7 +258,7 @@ export const subscribeToMessages = (
       console.error('Error in message subscription:', error);
       
       // If index doesn't exist, try without orderBy as fallback
-      if (error.code === 'failed-precondition' || error.code === 9) {
+      if (error.code === 'failed-precondition' || String(error.code) === '9') {
         console.warn('Firestore index missing. Using fallback query without orderBy.');
         const fallbackQuery = query(
           messagesRef,

@@ -1,12 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
   createJourneyReminder,
   getUserReminders,
-  deleteReminder,
-  updateReminder,
-  getTrainByNumber
+  deleteReminder
 } from '../firebase/services';
 import { JourneyReminder, UserSelection } from '../types';
 import { Timestamp } from 'firebase/firestore';
@@ -15,7 +12,6 @@ import TrainSearch from '../components/TrainSearch';
 
 const Reminders: React.FC = () => {
   const { currentUser } = useAuth();
-  const navigate = useNavigate();
   const [reminders, setReminders] = useState<JourneyReminder[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);

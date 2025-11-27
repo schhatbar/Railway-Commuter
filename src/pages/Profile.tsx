@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { removeFrequentRoute } from '../firebase/services';
-import { FrequentRoute } from '../types';
 
 const Profile: React.FC = () => {
   const { currentUser, updateUserProfile } = useAuth();
