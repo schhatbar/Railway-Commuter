@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { joinGroup, getGroupByCode } from '../firebase/services';
 import { GroupMember } from '../types';
@@ -7,11 +7,21 @@ import { GroupMember } from '../types';
 const JoinGroup: React.FC = () => {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [groupCode, setGroupCode] = useState('');
   const [cabinNumber, setCabinNumber] = useState('');
   const [seatNumber, setSeatNumber] = useState('');
+  const [joiningFromNextStation, setJoiningFromNextStation] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Check for group code in URL parameters
+  useEffect(() => {
+    const codeFromUrl = searchParams.get('code');
+    if (codeFromUrl) {
+      setGroupCode(codeFromUrl);
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,12 +48,17 @@ const JoinGroup: React.FC = () => {
       const member: GroupMember = {
         userId: currentUser.userId,
         userName: currentUser.displayName,
-        cabinNumber,
-        seatNumber
+        cabinNumber: cabinNumber.trim() || undefined,
+        seatNumber: seatNumber.trim() || undefined,
+        joiningFromNextStation: joiningFromNextStation
       };
 
-      await joinGroup(groupCode, member);
-      navigate(`/groups/${group.groupId}`);
+      const updatedGroup = await joinGroup(groupCode, member);
+      if (updatedGroup) {
+        navigate(`/groups/${updatedGroup.groupId}`);
+      } else {
+        setError('Failed to join group. Please try again.');
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to join group');
     } finally {
@@ -95,35 +110,78 @@ const JoinGroup: React.FC = () => {
               </p>
             </div>
 
-            <div>
-              <label htmlFor="cabinNumber" className="block text-sm font-medium text-gray-700 mb-1">
-                Your Cabin/Coach Number
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={joiningFromNextStation}
+                  onChange={(e) => {
+                    setJoiningFromNextStation(e.target.checked);
+                    if (e.target.checked) {
+                      setCabinNumber('');
+                      setSeatNumber('');
+                    }
+                  }}
+                  className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                />
+                <span className="ml-2 text-sm font-medium text-gray-900">
+                  I will join from the next station
+                </span>
               </label>
-              <input
-                type="text"
-                id="cabinNumber"
-                value={cabinNumber}
-                onChange={(e) => setCabinNumber(e.target.value)}
-                placeholder="e.g., S1, A2, B3"
-                className="input-field"
-                required
-              />
+              <p className="text-xs text-gray-600 mt-2 ml-6">
+                Check this if you don't have cabin/seat details yet
+              </p>
             </div>
 
-            <div>
-              <label htmlFor="seatNumber" className="block text-sm font-medium text-gray-700 mb-1">
-                Your Seat Number
-              </label>
-              <input
-                type="text"
-                id="seatNumber"
-                value={seatNumber}
-                onChange={(e) => setSeatNumber(e.target.value)}
-                placeholder="e.g., 42"
-                className="input-field"
-                required
-              />
-            </div>
+            {!joiningFromNextStation && (
+              <>
+                <div>
+                  <label htmlFor="cabinNumber" className="block text-sm font-medium text-gray-700 mb-1">
+                    Your Cabin/Coach Number
+                  </label>
+                  <input
+                    type="text"
+                    id="cabinNumber"
+                    value={cabinNumber}
+                    onChange={(e) => setCabinNumber(e.target.value)}
+                    placeholder="e.g., S1, A2, B3"
+                    className="input-field"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Optional - leave blank if not available</p>
+                </div>
+
+                <div>
+                  <label htmlFor="seatNumber" className="block text-sm font-medium text-gray-700 mb-1">
+                    Your Seat Number
+                  </label>
+                  <input
+                    type="text"
+                    id="seatNumber"
+                    value={seatNumber}
+                    onChange={(e) => setSeatNumber(e.target.value)}
+                    placeholder="e.g., 42"
+                    className="input-field"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Optional - leave blank if not available</p>
+                </div>
+              </>
+            )}
+
+            {joiningFromNextStation && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div className="flex items-start">
+                  <svg className="w-5 h-5 text-yellow-600 mt-0.5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div>
+                    <p className="text-sm font-medium text-yellow-800">Joining from next station</p>
+                    <p className="text-xs text-yellow-700 mt-1">
+                      You can update your cabin and seat details later from the group page.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <button
               type="submit"

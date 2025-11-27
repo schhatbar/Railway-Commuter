@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Navbar from './components/Navbar';
+import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
@@ -11,6 +12,7 @@ import CreateGroup from './pages/CreateGroup';
 import JoinGroup from './pages/JoinGroup';
 import GroupDetail from './pages/GroupDetail';
 import Profile from './pages/Profile';
+import Reminders from './pages/Reminders';
 
 const App: React.FC = () => {
   return (
@@ -19,12 +21,13 @@ const App: React.FC = () => {
         <div className="min-h-screen bg-gray-50">
           <Routes>
             {/* Public Routes */}
+            <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
 
             {/* Protected Routes */}
             <Route
-              path="/"
+              path="/dashboard"
               element={
                 <ProtectedRoute>
                   <Navbar />
@@ -77,8 +80,17 @@ const App: React.FC = () => {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/reminders"
+              element={
+                <ProtectedRoute>
+                  <Navbar />
+                  <Reminders />
+                </ProtectedRoute>
+              }
+            />
 
-            {/* Catch all - redirect to home */}
+            {/* Catch all - redirect to landing */}
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         </div>

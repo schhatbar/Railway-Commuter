@@ -31,10 +31,11 @@ export interface Train {
 
 export interface GroupMember {
   userId: string;
-  cabinNumber: string;
-  seatNumber: string;
+  cabinNumber?: string;
+  seatNumber?: string;
   userName: string;
   joinedAt?: Timestamp;
+  joiningFromNextStation?: boolean;
 }
 
 export interface Group {
@@ -72,6 +73,19 @@ export interface UserSelection {
   seatNumber: string;
   coachType: string;
   platformPosition: number;
+}
+
+export interface JourneyReminder {
+  reminderId: string;
+  trainNumber: string;
+  trainName: string;
+  route: string;
+  journeyDate: Timestamp;
+  reminderTime: Timestamp;
+  coachNumber: string;
+  seatNumber: string;
+  isActive: boolean;
+  createdAt: Timestamp;
 }
 
 export interface AuthContextType {
