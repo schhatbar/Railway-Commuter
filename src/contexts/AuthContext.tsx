@@ -5,7 +5,8 @@ import {
   signOut as firebaseSignOut,
   onAuthStateChanged,
   GoogleAuthProvider,
-  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   User as FirebaseUser
 } from 'firebase/auth';
 import { auth } from '../firebase/config';
@@ -27,6 +28,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Handle redirect result from Google Sign-In
+    const handleRedirectResult = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result?.user) {
+          const user = result.user;
+          // Check if user profile exists, if not create it
+          let userProfile = await getUserProfile(user.uid);
+          if (!userProfile) {
+            await createUserProfile(user.uid, {
+              email: user.email || '',
+              displayName: user.displayName || 'User',
+              phoneNumber: user.phoneNumber || '',
+              frequentRoutes: []
+            });
+            userProfile = await getUserProfile(user.uid);
+          }
+          setCurrentUser(userProfile);
+        }
+      } catch (error) {
+        console.error('Error handling redirect result:', error);
+      }
+    };
+
+    handleRedirectResult();
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
         // Fetch user profile from Firestore
@@ -64,22 +91,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signInWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
-    const userCredential = await signInWithPopup(auth, provider);
-    const user = userCredential.user;
-
-    // Check if user profile exists, if not create it
-    let userProfile = await getUserProfile(user.uid);
-    if (!userProfile) {
-      await createUserProfile(user.uid, {
-        email: user.email || '',
-        displayName: user.displayName || 'User',
-        phoneNumber: user.phoneNumber || '',
-        frequentRoutes: []
-      });
-      userProfile = await getUserProfile(user.uid);
-    }
-
-    setCurrentUser(userProfile);
+    await signInWithRedirect(auth, provider);
+    // The redirect result will be handled in the useEffect hook
   };
 
   const signOut = async () => {
