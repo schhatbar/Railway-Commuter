@@ -214,10 +214,42 @@ npm run build
 firebase deploy --only hosting
 ```
 
+### Deploy to Vercel
+
+1. Push your code to GitHub
+
+2. Go to [Vercel](https://vercel.com) and sign in with GitHub
+
+3. Click "Add New Project" and import your repository
+
+4. Configure your project:
+   - **Framework Preset**: Vite (auto-detected)
+   - **Build Command**: `npm run build` (auto-detected)
+   - **Output Directory**: `dist` (auto-detected)
+   - **Install Command**: `npm install` (auto-detected)
+
+5. Add Environment Variables:
+   Click on "Environment Variables" and add all Firebase configuration variables:
+   ```
+   VITE_FIREBASE_API_KEY=your_api_key_here
+   VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+   VITE_FIREBASE_PROJECT_ID=your_project_id
+   VITE_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
+   VITE_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
+   VITE_FIREBASE_APP_ID=your_app_id
+   ```
+
+6. Click "Deploy"
+
+7. After deployment, update Firebase Authentication:
+   - Go to Firebase Console > Authentication > Settings > Authorized domains
+   - Add your Vercel domain (e.g., `your-app.vercel.app`)
+
+**Note**: The `vercel.json` file is already configured for proper SPA routing and security headers.
+
 ### Deploy to Other Platforms
 
-The app can be deployed to:
-- **Vercel**: Connect your GitHub repo
+The app can also be deployed to:
 - **Netlify**: Connect your GitHub repo
 - **AWS Amplify**: Follow AWS Amplify deployment guide
 - Any static hosting service
