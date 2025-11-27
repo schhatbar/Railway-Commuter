@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -13,6 +13,15 @@ const Register: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const { signUp, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
+
+  // Check for auth errors from redirect
+  useEffect(() => {
+    const authError = sessionStorage.getItem('authError');
+    if (authError) {
+      setError(authError);
+      sessionStorage.removeItem('authError');
+    }
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -51,11 +60,17 @@ const Register: React.FC = () => {
 
     try {
       await signInWithGoogle();
-      navigate('/');
+      // Navigation will happen after redirect
     } catch (err: any) {
-      setError(err.message || 'Failed to sign in with Google');
-    } finally {
       setLoading(false);
+      // Provide user-friendly error messages
+      if (err.code === 'auth/operation-not-allowed') {
+        setError('Google Sign-In is not enabled. Please use email/password or contact support.');
+      } else if (err.code === 'auth/unauthorized-domain') {
+        setError('This domain is not authorized for Google Sign-In. Please contact support.');
+      } else {
+        setError(err.message || 'Failed to sign in with Google');
+      }
     }
   };
 

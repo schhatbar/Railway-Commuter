@@ -47,8 +47,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
           setCurrentUser(userProfile);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error handling redirect result:', error);
+        // Store error in sessionStorage to display on login/register page
+        if (error.code === 'auth/operation-not-allowed') {
+          sessionStorage.setItem('authError', 'Google Sign-In is not enabled. Please contact support or use email/password sign-in.');
+        } else if (error.code) {
+          sessionStorage.setItem('authError', error.message || 'Authentication failed');
+        }
       }
     };
 
